@@ -445,7 +445,7 @@ class Stickers:
 		return collected_stickers
 
 	# manipulate collected stickers
-	def grant_sticker(self, sticker_id, user_id):
+	def grant_sticker(self, sticker_id, user_id, receive_time=None):
 		sticker_id = get_id_bytes(sticker_id)
 		user_id = get_id_bytes(user_id)
 		collected_stickers = self.search_collected_stickers(
@@ -453,7 +453,11 @@ class Stickers:
 		)
 		if 0 < len(collected_stickers):
 			raise ValueError('Specified user already has the specified sticker')
-		collected_sticker = CollectedSticker(user_id=user_id, sticker_id=sticker_id)
+		collected_sticker = CollectedSticker(
+			user_id=user_id,
+			sticker_id=sticker_id,
+			receive_time=receive_time,
+		)
 		if self.count_collected_stickers(filter={'ids': collected_sticker.id_bytes}):
 			raise ValueError('Collected sticker ID collision')
 		self.connection.execute(
