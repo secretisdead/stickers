@@ -5,14 +5,15 @@ from ipaddress import ip_address
 from enum import Enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Table, Column, LargeBinary, Float
+from sqlalchemy import Table, Column, PrimaryKeyConstraint, Binary as sqla_binary, Float
 from sqlalchemy import Integer, String, MetaData, distinct
+from sqlalchemy.dialects.mysql import VARBINARY as mysql_binary
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func, and_, or_
 
 from statement_helper import sort_statement, paginate_statement, id_filter
 from statement_helper import time_cutoff_filter, string_like_filter
-from statement_helper import string_equal_filter, remote_origin_filter
+from statement_helper import string_equal_filter
 from statement_helper import bitwise_filter
 from idcollection import IDCollection
 from parse_id import parse_id, get_id_bytes, generate_or_parse_id
@@ -107,7 +108,7 @@ class StickerPlacement:
 		self.sticker = None
 
 class Stickers:
-	def __init__(self, engine, db_prefix='', install=False, remote_origin=None):
+	def __init__(self, engine, db_prefix='', install=False):
 		self.engine = engine
 		self.engine_session = sessionmaker(bind=self.engine)()
 
@@ -121,88 +122,61 @@ class Stickers:
 
 		default_bytes = 0b0 * 16
 
+		if 'mysql' == self.engine_session.bind.dialect.name:
+			Binary = mysql_binary
+		else:
+			Binary = sqla_binary
+
 		# stickers tables
 		self.stickers = Table(
 			self.db_prefix + 'stickers',
 			metadata,
-			Column(
-				'id',
-				LargeBinary(16),
-				primary_key=True,
-				default=default_bytes
-			),
+			Column('id', Binary(16), default=default_bytes),
 			Column('creation_time', Integer, default=0),
 			Column('name', String(self.name_length)),
 			Column('display', String(self.display_length)),
 			Column('category', String(self.category_length)),
 			Column('category_order', Integer, default=0),
 			Column('group_bits', Integer, default=0),
+			PrimaryKeyConstraint('id'),
 		)
 
 		# collected stickers tables
 		self.collected_stickers = Table(
 			self.db_prefix + 'collected_stickers',
 			metadata,
-			Column(
-				'id',
-				LargeBinary(16),
-				primary_key=True,
-				default=default_bytes
-			),
+			Column('id', Binary(16), default=default_bytes),
 			Column('receive_time', Integer, default=0),
-			Column(
-				'user_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
-			Column(
-				'sticker_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
+			Column('user_id', Binary(16), default=default_bytes),
+			Column('sticker_id', Binary(16), default=default_bytes),
+			PrimaryKeyConstraint('id'),
 		)
 
 		# placed stickers tables
 		self.sticker_placements = Table(
 			self.db_prefix + 'sticker_placements',
 			metadata,
-			Column(
-				'id',
-				LargeBinary(16),
-				primary_key=True,
-				default=default_bytes
-			),
+			Column('id', Binary(16), default=default_bytes),
 			Column('placement_time', Integer, default=0),
-			Column(
-				'subject_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
-			Column(
-				'user_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
-			Column(
-				'sticker_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
+			Column('subject_id', Binary(16), default=default_bytes),
+			Column('user_id', Binary(16), default=default_bytes),
+			Column('sticker_id', Binary(16), default=default_bytes),
 			Column('position_x', Float, default=0),
 			Column('position_y', Float, default=0),
 			Column('rotation', Float, default=0),
 			Column('scale', Float, default=0),
+			PrimaryKeyConstraint('id'),
 		)
 
 		self.connection = self.engine.connect()
 
 		if install:
-			table_exists = self.engine.dialect.has_table(
-				self.engine,
-				self.db_prefix + 'stickers'
-			)
-			if not table_exists:
-				metadata.create_all(self.engine)
+			for table in [
+					self.stickers,
+					self.collected_stickers,
+					self.sticker_placements,
+				]:
+				table.create(bind=self.engine, checkfirst=True)
 
 	def uninstall(self):
 		for table in [
