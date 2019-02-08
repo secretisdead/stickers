@@ -115,7 +115,7 @@ class Stickers:
 		self.db_prefix = db_prefix
 
 		self.name_length = 16
-		self.display_length = 16
+		self.display_length = 32
 		self.category_length = 16
 
 		metadata = MetaData()
