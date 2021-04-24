@@ -5,7 +5,7 @@ from ipaddress import ip_address
 from enum import Enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Table, Column, PrimaryKeyConstraint, Binary as sqla_binary, Float
+from sqlalchemy import Table, Column, PrimaryKeyConstraint, LargeBinary as sqla_binary, Float
 from sqlalchemy import Integer, String, MetaData, distinct
 from sqlalchemy.dialects.mysql import VARBINARY as mysql_binary
 from sqlalchemy.orm import sessionmaker
